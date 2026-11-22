@@ -18,6 +18,7 @@ const STAGES_DATA = [
     title: "황동 촛대 위의 타오르는 양초",
     desc: "앤틱 황동 촛대에 꽂힌 은빛 양초와 따스하게 타오르는 촛불의 불꽃을 관찰하여 프롬프트로 작성해 보세요.",
     targetImg: "images/stage_candle.jpg",
+    aiImg: "images/ai_candle.jpg",
     targetPrompt: "A burning silver candle with warm flame sitting in an antique brass candlestick, soft blurred green background, close up photography",
     passScore: 55,
     primaryKeywords: ["양초", "촛대", "촛불", "candle", "candlestick"],
@@ -42,6 +43,7 @@ const STAGES_DATA = [
     title: "도자기 볼에 담긴 신선한 레몬들",
     desc: "햇살을 받아 윤기가 흐르는 노란 레몬들과 어두운 테이블 위의 그림자를 관찰해 보세요.",
     targetImg: "images/stage_lemons.jpg",
+    aiImg: "images/ai_lemons.jpg",
     targetPrompt: "Fresh yellow lemons in a beige ceramic bowl on dark wood table, dramatic side sunlight and soft shadows, still life photography",
     passScore: 55,
     primaryKeywords: ["레몬", "lemon", "lemons"],
@@ -68,6 +70,7 @@ const STAGES_DATA = [
     title: "반숙 달걀이 올려진 정갈한 일본식 라멘",
     desc: "두 손으로 받쳐 든 라멘 그릇 속 반숙 달걀 2개, 초록 채소, 차슈, 나무젓가락을 표현해 보세요.",
     targetImg: "images/stage_ramen.jpg",
+    aiImg: "images/ai_ramen.jpg",
     targetPrompt: "A person holding a delicious bowl of Japanese ramen with two soft-boiled eggs, green spinach, sesame seeds, wooden chopsticks, close-up food photo",
     passScore: 65,
     primaryKeywords: ["라멘", "라면", "국수", "ramen", "noodles"],
@@ -92,6 +95,7 @@ const STAGES_DATA = [
     title: "에메랄드빛 강가의 알록달록 보트들",
     desc: "나뭇가지 그늘 아래 투명한 물 위에 정박된 노란색, 파란색 고무보트를 관찰해 보세요.",
     targetImg: "images/stage_boats.jpg",
+    aiImg: "images/ai_boats.jpg",
     targetPrompt: "Top view of yellow and blue inflatable rafting boats moored by the shore of crystal clear emerald green river under tree shade",
     passScore: 65,
     primaryKeywords: ["보트", "배", "고무보트", "래프팅", "boat", "boats", "raft"],
@@ -118,6 +122,7 @@ const STAGES_DATA = [
     title: "도시 옥상에서 기타를 연주하는 청년",
     desc: "비 젖은 옥상 바닥, 안경과 스트라이프 셔츠를 입고 통기타를 치는 연주자의 감성적인 순간입니다.",
     targetImg: "images/stage_guitar.jpg",
+    aiImg: "images/ai_guitar.jpg",
     targetPrompt: "Young man wearing glasses and striped vintage shirt playing acoustic guitar on a wooden chair on wet rooftop, urban city skyline background, cinematic portrait",
     passScore: 70,
     primaryKeywords: ["기타", "통기타", "guitar", "acoustic"],
@@ -142,6 +147,7 @@ const STAGES_DATA = [
     title: "꽃병과 책, 작은 새의 빈티지 정물화",
     desc: "기하학 패턴 벽지 앞, 붉은 테라코타 화병의 노란 꽃과 청록색 책 위에 앉은 아담한 새 일러스트입니다.",
     targetImg: "images/stage_vase.jpg",
+    aiImg: "images/ai_vase.jpg",
     targetPrompt: "Vintage textured illustration of yellow poppies in a terracotta vase next to a blue book with a small bird sitting on it, geometric patterned wallpaper",
     passScore: 70,
     primaryKeywords: ["꽃병", "화병", "vase", "jug"],
@@ -194,6 +200,9 @@ function navigateTo(viewName) {
     initSplitSlider();
   }
 
+  // 6번 제안: 화면 전환 후 모든 3D 틸트 카드 초기화
+  setTimeout(init3DTiltCards, 50);
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -235,7 +244,7 @@ function renderLevelGrid() {
   ];
 
   container.innerHTML = levels.map(lvl => `
-    <div class="level-card">
+    <div class="level-card tilt-card">
       <div>
         <div class="level-card-top">
           <span class="level-number-badge">${lvl.badge}</span>
@@ -255,6 +264,8 @@ function renderLevelGrid() {
       </div>
     </div>
   `).join('');
+
+  init3DTiltCards();
 }
 
 // ====================================================
@@ -468,88 +479,185 @@ function calculateStrictSimilarity(userPrompt, stageData) {
 }
 
 // ====================================================
-// 7. 30명 동시 실습 100% 무장애 AI 렌더러
-// 외부 45초 레이트리밋 없이 0.2초 만에 사용자 프롬프트에 맞는 고화질 AI 이미지 출력
+// 7. 30인 동시 실습 100% 무장애 + 실제 AI 생성 비교 이미지 엔진
+// - 원본과 다른 각도/구도로 생성된 실제 고화질 AI 작품(aiImg)을 기본 매핑하여 0.1초 만에 쾌적하게 렌더링
+// - 실시간 Pollinations API 연결도 시도하되, 45초 레이트리밋(Free limit reached)이나 지연 발생 시
+//   절대 노란 에러창을 띄우지 않고 준비된 실제 고화질 AI 이미지(images/ai_*.jpg)로 100% 안전하게 보호
 // ====================================================
 function generateRobustAIImage(userPrompt, stageData, evalResult) {
+  return new Promise((resolve) => {
+    const score = evalResult.score;
+
+    // 1. 점수가 현저히 낮은 경우 (엉뚱한 프롬프트 입력 시): AI가 지시를 파악하지 못한 미완성 패널티 캔버스 제공
+    if (score < 30) {
+      renderPenaltyCanvas(userPrompt, score, stageData).then(resolve);
+      return;
+    }
+
+    // 2. 실제 준비된 각 스테이지 전용 고화질 AI 생성 이미지 경로
+    const fallbackAiImg = stageData.aiImg || stageData.targetImg;
+
+    // 3. 사용자가 입력한 프롬프트 기반의 실시간 AI 생성 시도 (제한시간 2.5초)
+    let isHandled = false;
+    const fallbackTimer = setTimeout(() => {
+      if (!isHandled) {
+        isHandled = true;
+        resolve(fallbackAiImg);
+      }
+    }, 2500);
+
+    // 한글 키워드를 영문으로 보정
+    const translatedPrompt = translateAndRefinePrompt(userPrompt, stageData);
+    const seed = Math.floor(Math.random() * 99999);
+    const testUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(translatedPrompt + ", professional masterpiece, photorealistic, 4k")}?width=600&height=600&seed=${seed}&nologo=true`;
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    img.onload = () => {
+      if (!isHandled) {
+        // Pollinations.ai의 45초 레이트리밋(Free limit reached 노란색 배너) 감지
+        try {
+          const testCanvas = document.createElement('canvas');
+          testCanvas.width = 600;
+          testCanvas.height = 600;
+          const tCtx = testCanvas.getContext('2d');
+          tCtx.drawImage(img, 0, 0, 600, 600);
+          const p = tCtx.getImageData(300, 300, 1, 1).data;
+          // 노란색 배너 색상 감지 (RGB: 250, 204, 75 근처)
+          if (p[0] > 220 && p[1] > 170 && p[2] < 120) {
+            isHandled = true;
+            clearTimeout(fallbackTimer);
+            resolve(fallbackAiImg);
+            return;
+          }
+        } catch (e) {
+          // CORS 등 캔버스 접근 제한 시 통과
+        }
+
+        isHandled = true;
+        clearTimeout(fallbackTimer);
+        resolve(testUrl);
+      }
+    };
+
+    img.onerror = () => {
+      if (!isHandled) {
+        isHandled = true;
+        clearTimeout(fallbackTimer);
+        resolve(fallbackAiImg);
+      }
+    };
+
+    img.src = testUrl;
+  });
+}
+
+// 한글 프롬프트를 AI 생성에 맞게 다듬는 보조 함수
+function translateAndRefinePrompt(userPrompt, stageData) {
+  const dict = {
+    '양초': 'candle', '촛대': 'candlestick', '촛불': 'warm flickering flame', '황동': 'brass antique', '은빛': 'silver',
+    '레몬': 'fresh yellow lemons', '그릇': 'beige ceramic bowl', '도자기': 'ceramic', '햇살': 'dramatic sunlight', '그림자': 'soft shadows',
+    '라멘': 'bowl of japanese ramen noodles', '달걀': 'soft boiled eggs', '계란': 'eggs', '젓가락': 'wooden chopsticks',
+    '보트': 'rafting boats', '강': 'emerald river water', '물': 'clear river', '나무': 'tree shade',
+    '기타': 'acoustic guitar player', '청년': 'young man with glasses', '옥상': 'rainy rooftop', '비': 'wet floor reflection',
+    '꽃병': 'vintage poppies in terracotta vase', '새': 'little blue bird', '책': 'vintage teal book'
+  };
+
+  let res = userPrompt;
+  for (const [ko, en] of Object.entries(dict)) {
+    res = res.split(ko).join(en);
+  }
+  return res;
+}
+
+// 엉뚱한 프롬프트 제출 시 패널티 미완성 캔버스 렌더링
+function renderPenaltyCanvas(userPrompt, score, stageData) {
   return new Promise((resolve) => {
     const canvas = document.getElementById('hidden-render-canvas');
     const ctx = canvas.getContext('2d');
     canvas.width = 600;
     canvas.height = 600;
 
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = stageData.targetImg;
+    // 회색빛 모호한 배경
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(0, 0, 600, 600);
 
-    img.onload = () => {
-      ctx.clearRect(0, 0, 600, 600);
-      const score = evalResult.score;
+    // 뭉개진 그래픽과 물음표
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.arc(300, 260, 140, 0, Math.PI * 2);
+    ctx.fill();
 
-      if (score < 45) {
-        // [점수 미달: 엉뚱하거나 부족한 프롬프트]
-        // 색감이 틀어지고 모호하게 뭉개진 초보 AI 생성물
-        ctx.fillStyle = '#e2e8f0';
-        ctx.fillRect(0, 0, 600, 600);
+    ctx.fillStyle = '#64748b';
+    ctx.font = 'bold 72px Pretendard, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('?', 300, 285);
 
-        ctx.save();
-        ctx.filter = 'blur(12px) contrast(140%) grayscale(40%)';
-        ctx.drawImage(img, 20, 20, 560, 560);
-        ctx.restore();
+    ctx.fillStyle = '#475569';
+    ctx.font = 'bold 22px Pretendard, sans-serif';
+    ctx.fillText('핵심 피사체를 찾지 못했습니다', 300, 380);
 
-        ctx.fillStyle = 'rgba(168, 85, 247, 0.2)';
-        ctx.fillRect(0, 0, 600, 600);
+    ctx.font = '16px Pretendard, sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('사진 속 주인공(양초, 레몬 등)을 먼저 작성해 보세요!', 300, 420);
 
-      } else if (score < 70) {
-        // [보통: 피사체는 있으나 디테일이 부족한 경우]
-        // 유화 스타일 필터 및 부드러운 텍스처
-        ctx.save();
-        ctx.filter = 'contrast(112%) saturate(90%) sepia(20%)';
-        ctx.drawImage(img, 5, 5, 590, 590);
-        ctx.restore();
+    // 하단 배너
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.fillRect(0, 540, 600, 60);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 15px Pretendard, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`⚠️ 미완성 프롬프트 (${score}% Match)`, 20, 576);
 
-        const grad = ctx.createLinearGradient(0, 0, 600, 600);
-        grad.addColorStop(0, 'rgba(59, 130, 246, 0.12)');
-        grad.addColorStop(1, 'rgba(236, 72, 153, 0.12)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 600, 600);
+    resolve(canvas.toDataURL('image/jpeg', 0.9));
+  });
+}
 
-      } else {
-        // [우수 통과: 묘사가 정밀한 완성형 프롬프트]
-        // 선명한 디테일과 고급스러운 비네팅 글로우
-        ctx.save();
-        ctx.filter = 'contrast(106%) saturate(115%) brightness(102%)';
-        ctx.drawImage(img, 0, 0, 600, 600);
-        ctx.restore();
+// ====================================================
+// 🃏 6번 제안: 3D 틸트 카드 마우스 인터랙션 바인딩
+// ====================================================
+function init3DTiltCards() {
+  const cards = document.querySelectorAll('.tilt-card');
+  cards.forEach(card => {
+    // 이미 바인딩된 경우 중복 바인딩 방지
+    if (card.dataset.tiltInitialized === 'true') return;
+    card.dataset.tiltInitialized = 'true';
 
-        const radial = ctx.createRadialGradient(300, 300, 180, 300, 300, 380);
-        radial.addColorStop(0, 'rgba(0,0,0,0)');
-        radial.addColorStop(1, 'rgba(15, 23, 42, 0.4)');
-        ctx.fillStyle = radial;
-        ctx.fillRect(0, 0, 600, 600);
+    // 글레어(빛 반사) 엘리먼트 동적 삽입
+    let glare = card.querySelector('.tilt-glare');
+    if (!glare) {
+      glare = document.createElement('div');
+      glare.className = 'tilt-glare';
+      card.appendChild(glare);
+    }
+
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
+      // -8도 ~ +8도 자연스러운 3D 입체 기울기
+      const rotateX = ((y - centerY) / centerY) * -7;
+      const rotateY = ((x - centerX) / centerX) * 7;
+
+      card.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) translateY(-5px) scale3d(1.02, 1.02, 1.02)`;
+
+      if (glare) {
+        glare.style.opacity = '1';
+        glare.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 75%)`;
       }
+    });
 
-      // 하단 AI Generated 워터마크 띠
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
-      ctx.fillRect(0, 540, 600, 60);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 15px Pretendard, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(`🤖 AI Generated (${score}% Match)`, 20, 576);
-
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '13px Pretendard, sans-serif';
-      ctx.textAlign = 'right';
-      const snippet = userPrompt.length > 25 ? userPrompt.substring(0, 25) + '...' : userPrompt;
-      ctx.fillText(`"${snippet}"`, 580, 576);
-
-      resolve(canvas.toDataURL('image/jpeg', 0.94));
-    };
-
-    img.onerror = () => {
-      resolve(stageData.targetImg);
-    };
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0) scale3d(1, 1, 1)';
+      if (glare) {
+        glare.style.opacity = '0';
+      }
+    });
   });
 }
 
@@ -895,4 +1003,5 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   navigateTo('home');
+  init3DTiltCards();
 });

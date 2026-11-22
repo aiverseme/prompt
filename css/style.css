@@ -1,6 +1,6 @@
 /* ====================================================
    PromptMatch - Main Stylesheet
-   Modern Interactive & Gamified UI
+   Modern Interactive & Gamified UI with 3D Tilt & View Transitions
    ==================================================== */
 
 :root {
@@ -54,6 +54,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
+  perspective: 1200px;
 }
 
 /* ====================================================
@@ -148,7 +149,7 @@ body {
 }
 
 /* ====================================================
-   Layout & Sections
+   Layout & Sections (6번 제안: 뷰 트랜지션 애니메이션)
    ==================================================== */
 .main-container {
   max-width: 1200px;
@@ -160,28 +161,44 @@ body {
 
 .view-section {
   display: none;
-  animation: slideFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  transform: translateY(16px) scale(0.98);
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .view-section.active {
   display: block;
-}
-
-@keyframes slideFadeIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.99); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 /* ====================================================
-   Common UI Components & Cards
+   🃏 6번 제안: 3D 틸트(Tilt) 카드 효과
    ==================================================== */
+.tilt-card {
+  transform-style: preserve-3d;
+  transition: transform 0.15s ease-out, box-shadow 0.25s ease;
+  will-change: transform;
+  position: relative;
+}
+
+.tilt-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 80%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 5;
+}
+
 .card {
   background-color: var(--bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-md);
   padding: 1.8rem;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .gradient-text {
@@ -305,7 +322,6 @@ body {
   text-align: center;
   box-shadow: var(--shadow-lg);
   margin-bottom: 3.5rem;
-  transition: transform 0.3s ease;
 }
 
 .hero-badge {
@@ -371,15 +387,9 @@ body {
   flex-direction: column;
   justify-content: space-between;
   box-shadow: var(--shadow-sm);
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
   overflow: hidden;
-}
-
-.level-card:hover {
-  transform: translateY(-6px) scale(1.02);
-  box-shadow: 0 16px 32px -4px rgba(59, 130, 246, 0.15);
-  border-color: #93c5fd;
+  cursor: pointer;
 }
 
 .level-card-top {
@@ -404,7 +414,7 @@ body {
 }
 
 .level-card:hover .level-icon {
-  transform: scale(1.2) rotate(5deg);
+  transform: scale(1.2) rotate(6deg);
 }
 
 .level-card-title {
@@ -474,10 +484,6 @@ body {
   font-size: 1.2rem;
   display: flex;
   gap: 0.3rem;
-}
-
-.heart-item {
-  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 .challenge-split-layout {
@@ -627,7 +633,6 @@ body {
 .prompt-input-wrapper {
   position: relative;
   margin-bottom: 1.2rem;
-  transition: all 0.25s ease;
 }
 
 #ch-prompt-input {
@@ -641,7 +646,7 @@ body {
   background-color: #ffffff;
   resize: none;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   line-height: 1.5;
 }
 
@@ -1001,7 +1006,6 @@ body {
   top: 0;
   left: 0;
   height: 100%;
-  /* 너비는 부모 컨테이너 너비와 정확히 일치시켜야 왜곡 없이 슬라이드됨 */
   width: 100%;
   object-fit: cover;
 }
