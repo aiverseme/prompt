@@ -390,16 +390,149 @@ function toggleHintView() {
   }
 }
 
-function updateCharCount() {
-  const input = document.getElementById('ch-prompt-input');
+// 무관한 어휘/장난말/게임/전자기기 패턴 사전
+const IRRELEVANT_PATTERNS = [
+  // 장난말 및 비하
+  '바보', '멍청', '똥개', '쓰레기', '죽어', '닥쳐', '미친', '새끼', '존나', '졸라',
+  // 게임 / 만화 / 연예인
+  '롤', '피파', '마크', '마인크래프트', '포켓몬', '피카츄', '오버워치', '발로란트', '아이유', 'bts', '방탄', '축구', '야구', '농구', '게임',
+  // IT 및 전자기기 (정물화/자연과 무관)
+  '스마트폰', '핸드폰', '아이폰', '갤럭시', '컴퓨터', '노트북', '유튜브', '틱톡', '넷플릭스', '카톡',
+  // 무의미한 자모/초성
+  'ㅋㅋㅋ', 'ㅎㅎㅎ', 'ㅠㅠ', 'ㅜㅜ', 'ㅇㅇ', 'ㄷㄷ', 'asdf', 'qwer'
+];
+
+// 타 스테이지 핵심 사물 (교차 오염 검출용)
+const STAGE_EXCLUSIVE_OBJECTS = {
+  'l1_s1': ['레몬', '라멘', '라면', '보트', '기타', '꽃병'],
+  'l1_s2': ['양초', '촛대', '촛불', '라멘', '라면', '보트', '기타', '꽃병'],
+  'l2_s1': ['양초', '촛대', '레몬', '보트', '기타', '꽃병'],
+  'l2_s2': ['양초', '촛대', '레몬', '라멘', '기타', '꽃병'],
+  'l3_s1': ['양초', '촛대', '레몬', '라멘', '보트', '꽃병'],
+  'l3_s2': ['양초', '촛대', '레몬', '라멘', '보트', '기타']
+};
+
+// 실시간 프롬프트 검증 및 가이드 피드백 함수
+function validateAndGuidePrompt(text, stageData) {
+  const clean = text.trim();
+  const len = clean.length;
+  const inputEl = document.getElementById('ch-prompt-input');
   const countEl = document.getElementById('char-count');
+  const statusEl = document.getElementById('char-guide-status');
+  const alertBox = document.getElementById('prompt-alert-box');
+  const alertIcon = document.getElementById('alert-icon');
+  const alertText = document.getElementById('alert-text');
   const submitBtn = document.getElementById('btn-submit-prompt');
-  const len = input.value.trim().length;
+  const avatar = document.getElementById('tutor-char-avatar');
+  const tipText = document.getElementById('ch-char-tip');
 
   countEl.textContent = len;
-  submitBtn.disabled = len < 2;
+  inputEl.classList.remove('has-warning', 'has-success');
 
-  updateTutorAvatar(input.value);
+  // 1. 공백 상태
+  if (len === 0) {
+    statusEl.textContent = '📏 최소 10자 이상 작성해 주세요';
+    statusEl.className = 'char-guide-status';
+    alertBox.className = 'prompt-alert-box info';
+    alertIcon.textContent = '💡';
+    alertText.innerHTML = `사진 속 <strong>중심 사물</strong>과 <strong>색상/재질</strong>을 10자 이상 자세히 적어보세요.`;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<span>✍️ 최소 10자 이상 작성 후 생성 가능 (0/10자)</span>`;
+    if (avatar) avatar.textContent = '👀';
+    if (tipText) tipText.textContent = stageData.charTip || '사진을 자세히 관찰해 보세요! 어떤 형태와 색상, 재질이 돋보이나요?';
+    return;
+  }
+
+  // 2. 무관한 어휘(비속어, 게임, 엉뚱한 사물 등) 검사
+  const lowerText = clean.toLowerCase();
+  let foundIrrelevant = null;
+
+  // 공통 무관 어휘 체크
+  for (const pattern of IRRELEVANT_PATTERNS) {
+    if (lowerText.includes(pattern)) {
+      foundIrrelevant = pattern;
+      break;
+    }
+  }
+
+  // 타 스테이지 사물 교차 체크
+  if (!foundIrrelevant && stageData && STAGE_EXCLUSIVE_OBJECTS[stageData.id]) {
+    for (const otherObj of STAGE_EXCLUSIVE_OBJECTS[stageData.id]) {
+      if (lowerText.includes(otherObj)) {
+        foundIrrelevant = otherObj;
+        break;
+      }
+    }
+  }
+
+  // 무관한 어휘가 발견된 경우 -> 강력한 경고 및 제출 차단
+  if (foundIrrelevant) {
+    inputEl.classList.add('has-warning');
+    statusEl.textContent = '⚠️ 사진과 무관한 단어 감지';
+    statusEl.className = 'char-guide-status';
+    alertBox.className = 'prompt-alert-box warning';
+    alertIcon.textContent = '⚠️';
+    alertText.innerHTML = `사진과 관련 없는 단어(<strong>'${foundIrrelevant}'</strong>)가 감지되었습니다. 사진에 실제로 보이는 사물에 집중해 주세요!`;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<span>⚠️ 무관한 단어를 수정해 주세요</span>`;
+    if (avatar) avatar.textContent = '🧐';
+    if (tipText) tipText.textContent = `사진에 '${foundIrrelevant}'(은)는 보이지 않아요! 눈앞의 사진 속 사물을 설명해 볼까요?`;
+    return;
+  }
+
+  // 3. 글자 수 10자 미만인 경우
+  if (len < 10) {
+    const remain = 10 - len;
+    statusEl.textContent = `✍️ ${remain}자 더 작성 필요 (현재 ${len}자)`;
+    statusEl.className = 'char-guide-status';
+    alertBox.className = 'prompt-alert-box info';
+    alertIcon.textContent = '📏';
+    alertText.innerHTML = `더 구체적으로 묘사해 보세요! <strong>최소 10자 이상</strong> 작성해야 AI가 이미지를 그릴 수 있습니다. (앞으로 <strong>${remain}자</strong> 남음)`;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<span>✍️ ${remain}자 더 작성해 주세요 (${len}/10자)</span>`;
+    if (avatar) avatar.textContent = '🤔';
+    if (tipText) tipText.textContent = `조금 더 길고 자세하게 설명해 볼까요? (현재 ${len}자, 목표 10자 이상)`;
+    return;
+  }
+
+  // 4. 글자 수 10자 이상 충족: 핵심 피사체 포함 여부 검사
+  let hasPrimary = false;
+  stageData.primaryKeywords.forEach(kw => {
+    if (lowerText.includes(kw.toLowerCase())) {
+      hasPrimary = true;
+    }
+  });
+
+  if (!hasPrimary) {
+    // 10자는 넘었으나 핵심 사물이 빠진 경우
+    statusEl.textContent = `💡 중심 사물 누락 (${len}자)`;
+    statusEl.className = 'char-guide-status';
+    alertBox.className = 'prompt-alert-box warning';
+    alertIcon.textContent = '💡';
+    const primaryEx = stageData.primaryKeywords.slice(0, 2).join(', ');
+    alertText.innerHTML = `사진의 가장 중요한 <strong>핵심 사물</strong>(예: <strong>${primaryEx}</strong>)이 빠져있습니다. 무엇이 주인공인지 꼭 문장에 포함해 보세요!`;
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `<span>🎨 내가 쓴 프롬프트로 이미지 생성하기 (${len}자)</span>`;
+    if (avatar) avatar.textContent = '💡';
+    if (tipText) tipText.textContent = `무엇을 찍은 사진인지 핵심 사물(${primaryEx})을 꼭 적어주어야 높은 싱크로율이 나옵니다!`;
+  } else {
+    // 10자 이상 + 핵심 사물 포함 -> 완벽!
+    inputEl.classList.add('has-success');
+    statusEl.textContent = `✅ 작성 완료 (${len}자)`;
+    statusEl.className = 'char-guide-status valid';
+    alertBox.className = 'prompt-alert-box success';
+    alertIcon.textContent = '✨';
+    alertText.innerHTML = `훌륭한 관찰력입니다! 핵심 사물과 세부 묘사가 잘 포함되어 높은 싱크로율이 기대됩니다.`;
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `<span>🎨 내가 쓴 프롬프트로 이미지 생성하기 (${len}자)</span>`;
+    if (avatar) avatar.textContent = '🤩';
+    if (tipText) tipText.textContent = `멋진 프롬프트예요! 이대로 생성 버튼을 눌러 AI 이미지를 만들어 보세요!`;
+  }
+}
+
+function updateCharCount() {
+  const input = document.getElementById('ch-prompt-input');
+  validateAndGuidePrompt(input.value, state.currentStageData);
 }
 
 function clearPromptInput() {
@@ -479,96 +612,113 @@ function calculateStrictSimilarity(userPrompt, stageData) {
 }
 
 // ====================================================
-// 7. 30인 동시 실습 100% 무장애 + 실제 AI 생성 비교 이미지 엔진
-// - 원본과 다른 각도/구도로 생성된 실제 고화질 AI 작품(aiImg)을 기본 매핑하여 0.1초 만에 쾌적하게 렌더링
-// - 실시간 Pollinations API 연결도 시도하되, 45초 레이트리밋(Free limit reached)이나 지연 발생 시
-//   절대 노란 에러창을 띄우지 않고 준비된 실제 고화질 AI 이미지(images/ai_*.jpg)로 100% 안전하게 보호
+// 7. 30인 단체 실습 100% 무장애 자체 렌더링 AI 엔진
+// - 외부 무료 API(Pollinations 등 45초 무료 한도/노란 에러창)를 100% 전면 배제
+// - 학교/강의실 30명 동시 접속에도 외부 트래픽 0회로 0.05초 만에 즉각 렌더링
+// - 학생이 작성한 프롬프트의 관찰 수준(점수 및 키워드)에 따라 3단계로 반응하는 자체 캔버스 합성
 // ====================================================
 function generateRobustAIImage(userPrompt, stageData, evalResult) {
   return new Promise((resolve) => {
     const score = evalResult.score;
+    const canvas = document.getElementById('hidden-render-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 600;
+    canvas.height = 600;
 
-    // 1. 점수가 현저히 낮은 경우 (엉뚱한 프롬프트 입력 시): AI가 지시를 파악하지 못한 미완성 패널티 캔버스 제공
-    if (score < 30) {
+    // 1단계: 점수 < 35% (핵심 피사체 누락 또는 엉뚱한 입력)
+    // -> AI가 대상을 파악하지 못한 미완성 스케치/패널티 화면 출력
+    if (score < 35) {
       renderPenaltyCanvas(userPrompt, score, stageData).then(resolve);
       return;
     }
 
-    // 2. 실제 준비된 각 스테이지 전용 고화질 AI 생성 이미지 경로
-    const fallbackAiImg = stageData.aiImg || stageData.targetImg;
-
-    // 3. 사용자가 입력한 프롬프트 기반의 실시간 AI 생성 시도 (제한시간 2.5초)
-    let isHandled = false;
-    const fallbackTimer = setTimeout(() => {
-      if (!isHandled) {
-        isHandled = true;
-        resolve(fallbackAiImg);
-      }
-    }, 2500);
-
-    // 한글 키워드를 영문으로 보정
-    const translatedPrompt = translateAndRefinePrompt(userPrompt, stageData);
-    const seed = Math.floor(Math.random() * 99999);
-    const testUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(translatedPrompt + ", professional masterpiece, photorealistic, 4k")}?width=600&height=600&seed=${seed}&nologo=true`;
-
+    // 2단계 & 3단계: 준비된 실제 고화질 AI 작품 로드
+    const baseImgSrc = stageData.aiImg || stageData.targetImg;
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    img.src = baseImgSrc;
 
     img.onload = () => {
-      if (!isHandled) {
-        // Pollinations.ai의 45초 레이트리밋(Free limit reached 노란색 배너) 감지
-        try {
-          const testCanvas = document.createElement('canvas');
-          testCanvas.width = 600;
-          testCanvas.height = 600;
-          const tCtx = testCanvas.getContext('2d');
-          tCtx.drawImage(img, 0, 0, 600, 600);
-          const p = tCtx.getImageData(300, 300, 1, 1).data;
-          // 노란색 배너 색상 감지 (RGB: 250, 204, 75 근처)
-          if (p[0] > 220 && p[1] > 170 && p[2] < 120) {
-            isHandled = true;
-            clearTimeout(fallbackTimer);
-            resolve(fallbackAiImg);
-            return;
-          }
-        } catch (e) {
-          // CORS 등 캔버스 접근 제한 시 통과
+      ctx.clearRect(0, 0, 600, 600);
+
+      if (score < 65) {
+        // [2단계: 보통 35% ~ 64%]
+        // 핵심 사물은 포착했으나 디테일(배경, 조명)이 부족하여
+        // 아직 완성되지 않은 'AI 생성 초안(Draft)' 느낌의 수채화/파스텔 질감 연출
+        ctx.save();
+        ctx.filter = 'contrast(95%) saturate(88%) brightness(96%)';
+        ctx.drawImage(img, 0, 0, 600, 600);
+        ctx.restore();
+
+        // 약간의 스케치 오버레이
+        const draftGrad = ctx.createLinearGradient(0, 0, 600, 600);
+        draftGrad.addColorStop(0, 'rgba(148, 163, 184, 0.15)');
+        draftGrad.addColorStop(1, 'rgba(203, 213, 225, 0.25)');
+        ctx.fillStyle = draftGrad;
+        ctx.fillRect(0, 0, 600, 600);
+
+        // 하단 안내 띠
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.88)';
+        ctx.fillRect(0, 540, 600, 60);
+
+        ctx.fillStyle = '#f59e0b';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`🎨 AI 초안 렌더링 (${score}% 일치)`, 20, 576);
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '13px Pretendard, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('조명과 배경 묘사를 추가하면 완성됩니다!', 580, 576);
+
+      } else {
+        // [3단계: 우수 65% 이상 통과]
+        // 원본과 완전히 다른 각도/형태의 선명한 최고 화질 AI 마스터피스 출력!
+        ctx.save();
+        
+        // 학생 프롬프트 키워드에 맞춘 조명 톤 미세 반응
+        const cleanP = userPrompt.toLowerCase();
+        if (cleanP.includes('햇살') || cleanP.includes('따스') || cleanP.includes('불꽃') || cleanP.includes('따뜻')) {
+          ctx.filter = 'contrast(106%) saturate(115%) brightness(103%)';
+        } else if (cleanP.includes('초록') || cleanP.includes('에메랄드') || cleanP.includes('파란')) {
+          ctx.filter = 'contrast(108%) saturate(120%)';
+        } else {
+          ctx.filter = 'contrast(105%) saturate(108%)';
         }
 
-        isHandled = true;
-        clearTimeout(fallbackTimer);
-        resolve(testUrl);
+        ctx.drawImage(img, 0, 0, 600, 600);
+        ctx.restore();
+
+        // 고급스러운 비네팅 및 글로우
+        const vignette = ctx.createRadialGradient(300, 300, 200, 300, 300, 420);
+        vignette.addColorStop(0, 'rgba(0,0,0,0)');
+        vignette.addColorStop(1, 'rgba(15, 23, 42, 0.35)');
+        ctx.fillStyle = vignette;
+        ctx.fillRect(0, 0, 600, 600);
+
+        // 하단 공식 AI Generated 인증 띠
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.fillRect(0, 540, 600, 60);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 15px Pretendard, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`✨ AI 마스터피스 완성 (${score}% 싱크로율)`, 20, 576);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '13px Pretendard, sans-serif';
+        ctx.textAlign = 'right';
+        const snippet = userPrompt.length > 22 ? userPrompt.substring(0, 22) + '...' : userPrompt;
+        ctx.fillText(`"${snippet}"`, 580, 576);
       }
+
+      resolve(canvas.toDataURL('image/jpeg', 0.95));
     };
 
     img.onerror = () => {
-      if (!isHandled) {
-        isHandled = true;
-        clearTimeout(fallbackTimer);
-        resolve(fallbackAiImg);
-      }
+      // 이미지 로드 예외 시 안전하게 원본으로 대응
+      resolve(stageData.targetImg);
     };
-
-    img.src = testUrl;
   });
-}
-
-// 한글 프롬프트를 AI 생성에 맞게 다듬는 보조 함수
-function translateAndRefinePrompt(userPrompt, stageData) {
-  const dict = {
-    '양초': 'candle', '촛대': 'candlestick', '촛불': 'warm flickering flame', '황동': 'brass antique', '은빛': 'silver',
-    '레몬': 'fresh yellow lemons', '그릇': 'beige ceramic bowl', '도자기': 'ceramic', '햇살': 'dramatic sunlight', '그림자': 'soft shadows',
-    '라멘': 'bowl of japanese ramen noodles', '달걀': 'soft boiled eggs', '계란': 'eggs', '젓가락': 'wooden chopsticks',
-    '보트': 'rafting boats', '강': 'emerald river water', '물': 'clear river', '나무': 'tree shade',
-    '기타': 'acoustic guitar player', '청년': 'young man with glasses', '옥상': 'rainy rooftop', '비': 'wet floor reflection',
-    '꽃병': 'vintage poppies in terracotta vase', '새': 'little blue bird', '책': 'vintage teal book'
-  };
-
-  let res = userPrompt;
-  for (const [ko, en] of Object.entries(dict)) {
-    res = res.split(ko).join(en);
-  }
-  return res;
 }
 
 // 엉뚱한 프롬프트 제출 시 패널티 미완성 캔버스 렌더링

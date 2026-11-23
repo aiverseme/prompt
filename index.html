@@ -120,9 +120,16 @@
           <div class="prompt-input-wrapper" id="prompt-input-wrapper">
             <textarea id="ch-prompt-input" rows="4" maxlength="200" placeholder="무엇이 보이나요? 이미지를 설명하는 문장을 직접 키보드로 입력해 보세요... (예: 황동 촛대 위에 꽂힌 은빛 양초와 따스하게 타오르는 촛불 불꽃)"></textarea>
             <div class="input-meta">
+              <span class="char-guide-status" id="char-guide-status">📏 최소 10자 이상 작성해 주세요</span>
               <span class="char-counter"><span id="char-count">0</span> / 200자</span>
               <button class="btn-clear" onclick="clearPromptInput()">지우기</button>
             </div>
+          </div>
+
+          <!-- 실시간 단어 감지 및 관찰 가이드 알림 바 -->
+          <div class="prompt-alert-box info" id="prompt-alert-box">
+            <span class="alert-icon" id="alert-icon">💡</span>
+            <span class="alert-text" id="alert-text">사진 속 <strong>중심 사물</strong>과 <strong>색상/재질</strong>을 10자 이상 자세히 적어보세요.</span>
           </div>
 
           <!-- 생각 유도형 관찰 힌트 질문 -->
