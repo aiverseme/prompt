@@ -19,6 +19,11 @@ const STAGES_DATA = [
     desc: "앤틱 황동 촛대에 꽂힌 은빛 양초와 따스하게 타오르는 촛불의 불꽃을 관찰하여 프롬프트로 작성해 보세요.",
     targetImg: "images/stage_candle.jpg",
     aiImg: "images/ai_candle.jpg",
+    aiVariants: [
+      { src: "images/ai_candle.jpg", keywords: ["유리", "랜턴", "어두운", "따스", "은은"] },
+      { src: "images/ai_candle_v2.jpg", keywords: ["황동", "초록", "정원", "아웃포커싱", "배경", "사진", "측면"] },
+      { src: "images/ai_candle_v3.jpg", keywords: ["은빛", "수채화", "그림", "일러스트", "테이블", "미니멀"] }
+    ],
     targetPrompt: "A burning silver candle with warm flame sitting in an antique brass candlestick, soft blurred green background, close up photography",
     passScore: 55,
     primaryKeywords: ["양초", "촛대", "촛불", "candle", "candlestick"],
@@ -44,6 +49,11 @@ const STAGES_DATA = [
     desc: "햇살을 받아 윤기가 흐르는 노란 레몬들과 어두운 테이블 위의 그림자를 관찰해 보세요.",
     targetImg: "images/stage_lemons.jpg",
     aiImg: "images/ai_lemons.jpg",
+    aiVariants: [
+      { src: "images/ai_lemons.jpg", keywords: ["노란", "가득", "클로즈업", "상큼", "과일"] },
+      { src: "images/ai_lemons_v2.jpg", keywords: ["볼", "그릇", "도자기", "그림자", "정물", "어두운"] },
+      { src: "images/ai_lemons_v3.jpg", keywords: ["나무", "테이블", "식탁", "햇살", "자연광", "야외"] }
+    ],
     targetPrompt: "Fresh yellow lemons in a beige ceramic bowl on dark wood table, dramatic side sunlight and soft shadows, still life photography",
     passScore: 55,
     primaryKeywords: ["레몬", "lemon", "lemons"],
@@ -71,6 +81,11 @@ const STAGES_DATA = [
     desc: "두 손으로 받쳐 든 라멘 그릇 속 반숙 달걀 2개, 초록 채소, 차슈, 나무젓가락을 표현해 보세요.",
     targetImg: "images/stage_ramen.jpg",
     aiImg: "images/ai_ramen.jpg",
+    aiVariants: [
+      { src: "images/ai_ramen.jpg", keywords: ["린넨", "두 손", "들고", "그릇"] },
+      { src: "images/ai_ramen_v2.jpg", keywords: ["달걀", "계란", "반숙", "차슈", "시금치", "테이블", "사진"] },
+      { src: "images/ai_ramen_v3.jpg", keywords: ["일러스트", "그림", "애니", "따뜻", "젓가락", "면"] }
+    ],
     targetPrompt: "A person holding a delicious bowl of Japanese ramen with two soft-boiled eggs, green spinach, sesame seeds, wooden chopsticks, close-up food photo",
     passScore: 65,
     primaryKeywords: ["라멘", "라면", "국수", "ramen", "noodles"],
@@ -96,6 +111,11 @@ const STAGES_DATA = [
     desc: "나뭇가지 그늘 아래 투명한 물 위에 정박된 노란색, 파란색 고무보트를 관찰해 보세요.",
     targetImg: "images/stage_boats.jpg",
     aiImg: "images/ai_boats.jpg",
+    aiVariants: [
+      { src: "images/ai_boats.jpg", keywords: ["고무보트", "모여", "물가", "선명"] },
+      { src: "images/ai_boats_v2.jpg", keywords: ["탑뷰", "위에서", "하이앵글", "에메랄드", "투명", "자갈"] },
+      { src: "images/ai_boats_v3.jpg", keywords: ["나무", "숲", "호수", "풍경", "잔잔"] }
+    ],
     targetPrompt: "Top view of yellow and blue inflatable rafting boats moored by the shore of crystal clear emerald green river under tree shade",
     passScore: 65,
     primaryKeywords: ["보트", "배", "고무보트", "래프팅", "boat", "boats", "raft"],
@@ -123,6 +143,11 @@ const STAGES_DATA = [
     desc: "비 젖은 옥상 바닥, 안경과 스트라이프 셔츠를 입고 통기타를 치는 연주자의 감성적인 순간입니다.",
     targetImg: "images/stage_guitar.jpg",
     aiImg: "images/ai_guitar.jpg",
+    aiVariants: [
+      { src: "images/ai_guitar.jpg", keywords: ["청년", "통기타", "연주", "감성"] },
+      { src: "images/ai_guitar_v2.jpg", keywords: ["안경", "스트라이프", "셔츠", "비", "젖은", "의자", "옥상"] },
+      { src: "images/ai_guitar_v3.jpg", keywords: ["노을", "실루엣", "도시", "분위기", "저녁"] }
+    ],
     targetPrompt: "Young man wearing glasses and striped vintage shirt playing acoustic guitar on a wooden chair on wet rooftop, urban city skyline background, cinematic portrait",
     passScore: 70,
     primaryKeywords: ["기타", "통기타", "guitar", "acoustic"],
@@ -148,6 +173,11 @@ const STAGES_DATA = [
     desc: "기하학 패턴 벽지 앞, 붉은 테라코타 화병의 노란 꽃과 청록색 책 위에 앉은 아담한 새 일러스트입니다.",
     targetImg: "images/stage_vase.jpg",
     aiImg: "images/ai_vase.jpg",
+    aiVariants: [
+      { src: "images/ai_vase.jpg", keywords: ["테라코타", "정물", "빈티지"] },
+      { src: "images/ai_vase_v2.jpg", keywords: ["벽지", "패턴", "청록색", "책", "일러스트", "2d"] },
+      { src: "images/ai_vase_v3.jpg", keywords: ["유화", "회화", "질감", "화분", "작은 새"] }
+    ],
     targetPrompt: "Vintage textured illustration of yellow poppies in a terracotta vase next to a blue book with a small bird sitting on it, geometric patterned wallpaper",
     passScore: 70,
     primaryKeywords: ["꽃병", "화병", "vase", "jug"],
@@ -639,6 +669,43 @@ function calculateStrictSimilarity(userPrompt, stageData) {
 // - 학교/강의실 30명 동시 접속에도 외부 트래픽 0회로 0.05초 만에 즉각 렌더링
 // - 학생이 작성한 프롬프트의 관찰 수준(점수 및 키워드)에 따라 3단계로 반응하는 자체 캔버스 합성
 // ====================================================
+// 학생 프롬프트 내용과 해시값에 따라 스테이지 내 최적의 AI 변형 이미지 선택
+function selectDynamicAIImage(userPrompt, stageData) {
+  const variants = stageData.aiVariants;
+  if (!variants || variants.length === 0) {
+    return stageData.aiImg || stageData.targetImg;
+  }
+
+  const lower = userPrompt.toLowerCase();
+  let bestScore = -1;
+  let tiedVariants = [];
+
+  variants.forEach(variant => {
+    let matchCount = 0;
+    variant.keywords.forEach(kw => {
+      if (lower.includes(kw.toLowerCase())) {
+        matchCount += 1;
+      }
+    });
+
+    if (matchCount > bestScore) {
+      bestScore = matchCount;
+      tiedVariants = [variant];
+    } else if (matchCount === bestScore) {
+      tiedVariants.push(variant);
+    }
+  });
+
+  // 동률(또는 키워드 0매칭)일 경우 프롬프트 문자열 해시로 결정론적 분산 선택
+  let hash = 0;
+  for (let i = 0; i < lower.length; i++) {
+    hash = ((hash << 5) - hash) + lower.charCodeAt(i);
+    hash |= 0;
+  }
+  const chosen = tiedVariants[Math.abs(hash) % tiedVariants.length];
+  return chosen.src;
+}
+
 function generateRobustAIImage(userPrompt, stageData, evalResult) {
   return new Promise((resolve) => {
     const score = evalResult.score;
@@ -650,12 +717,14 @@ function generateRobustAIImage(userPrompt, stageData, evalResult) {
     // 1단계: 점수 < 35% (핵심 피사체 누락 또는 엉뚱한 입력)
     // -> AI가 대상을 파악하지 못한 미완성 스케치/패널티 화면 출력
     if (score < 35) {
+      state.lastSelectedVariantSrc = stageData.targetImg;
       renderPenaltyCanvas(userPrompt, score, stageData).then(resolve);
       return;
     }
 
-    // 2단계 & 3단계: 준비된 실제 고화질 AI 작품 로드 (네트워크 지연 시 3초 안전 타임아웃)
-    const baseImgSrc = stageData.aiImg || stageData.targetImg;
+    // 2단계 & 3단계: 프롬프트 기반 동적 다중 AI 풀에서 이미지 선택 (네트워크 지연 시 3초 안전 타임아웃)
+    const baseImgSrc = selectDynamicAIImage(userPrompt, stageData);
+    state.lastSelectedVariantSrc = baseImgSrc;
     const img = new Image();
     let isDone = false;
 
@@ -904,8 +973,10 @@ function finishEvaluation(userPrompt, stageData, evalResult, userGenImg) {
     state.hearts = Math.max(0, state.hearts - 1);
   }
 
-  // localStorage 용량 초과 방지를 위해 저장용 객체는 경량 경로 사용
-  const storageThumb = evalResult.score < 35 ? stageData.targetImg : (stageData.aiImg || stageData.targetImg);
+  // localStorage 용량 초과 방지를 위해 저장용 객체는 선택된 변형 이미지 경로 사용
+  const storageThumb = evalResult.score < 35
+    ? stageData.targetImg
+    : (state.lastSelectedVariantSrc || stageData.aiImg || stageData.targetImg);
   const historyEntry = {
     id: Date.now(),
     date: new Date().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
