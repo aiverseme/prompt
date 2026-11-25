@@ -268,50 +268,56 @@ function renderLevelGrid() {
   const levels = [
     {
       level: 1,
-      title: "Level 1: 기초 사물 & 빛",
+      num: "01",
+      tag: "FOUNDATION",
+      title: "기초 사물과 빛",
       desc: "타오르는 촛대, 햇살을 머금은 레몬 등 중심 사물과 빛의 방향을 관찰하고 정확히 작성하는 입문 단계입니다.",
-      stagesCount: "2개 스테이지",
+      stagesCount: "2 Stages",
       targetScore: "목표 55%+",
-      icon: "🕯️",
+      thumb: "images/stage_candle.jpg",
       badge: "입문"
     },
     {
       level: 2,
-      title: "Level 2: 색감 & 라이프스타일",
+      num: "02",
+      tag: "COMPOSITION",
+      title: "색감과 라이프스타일",
       desc: "정갈한 라멘 한 그릇, 에메랄드 강가의 고무보트 등 생생한 일상과 다채로운 색감, 구도를 묘사하는 중급 단계입니다.",
-      stagesCount: "2개 스테이지",
+      stagesCount: "2 Stages",
       targetScore: "목표 65%+",
-      icon: "🍜",
+      thumb: "images/stage_ramen.jpg",
       badge: "중급"
     },
     {
       level: 3,
-      title: "Level 3: 인물 & 감성 무드",
+      num: "03",
+      tag: "ATMOSPHERE",
+      title: "인물과 감성 무드",
       desc: "도시 옥상에서 기타를 연주하는 인물과 빈티지 일러스트 등 감성적인 스토리와 화풍을 포착하는 마스터 단계입니다.",
-      stagesCount: "2개 스테이지",
+      stagesCount: "2 Stages",
       targetScore: "목표 70%+",
-      icon: "🎸",
+      thumb: "images/stage_guitar.jpg",
       badge: "고급"
     }
   ];
 
   container.innerHTML = levels.map(lvl => `
-    <div class="level-card tilt-card">
-      <div>
-        <div class="level-card-top">
-          <span class="level-number-badge">${lvl.badge}</span>
-          <span class="level-icon">${lvl.icon}</span>
-        </div>
+    <div class="level-card tilt-card" onclick="startLevel(${lvl.level})">
+      <div class="level-thumb-wrap">
+        <img src="${lvl.thumb}" alt="${lvl.title}" class="level-thumb">
+        <span class="level-num-pill">LEVEL ${lvl.num} · ${lvl.badge}</span>
+      </div>
+      <div class="level-card-body">
+        <span class="level-tag">${lvl.tag}</span>
         <h3 class="level-card-title">${lvl.title}</h3>
         <p class="level-card-desc">${lvl.desc}</p>
-      </div>
-      <div>
         <div class="level-meta">
-          <span>🎯 ${lvl.targetScore}</span>
-          <span>📂 ${lvl.stagesCount}</span>
+          <span>${lvl.targetScore}</span>
+          <span>${lvl.stagesCount}</span>
         </div>
-        <button class="btn btn-primary pulse-btn" style="width:100%" onclick="startLevel(${lvl.level})">
+        <button class="btn btn-primary" style="width:100%" onclick="event.stopPropagation(); startLevel(${lvl.level})">
           <span>도전 시작하기</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
         </button>
       </div>
     </div>
