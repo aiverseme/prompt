@@ -168,14 +168,36 @@ const STAGES_DATA = [
 // ====================================================
 // 2. 앱 전역 상태 (Application State)
 // ====================================================
+// 안전하게 히스토리 로드
+function loadSafeHistory() {
+  try {
+    const raw = localStorage.getItem('promptmatch_history');
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+// HTML 특수문자 이스케이프 (XSS/마크업 깨짐 방지)
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const state = {
   currentView: 'home',
   currentStageData: STAGES_DATA[0],
   lastResult: null,
-  userPromptHistory: JSON.parse(localStorage.getItem('promptmatch_history') || '[]'),
+  userPromptHistory: loadSafeHistory(),
   hintsOpen: false,
   hearts: 3,
-  sliderPos: 50 // 스플릿 슬라이더 위치 (%)
+  sliderPos: 50, // 스플릿 슬라이더 위치 (%)
+  isGenerating: false // 중복 제출 방지 플래그
 };
 
 // ====================================================
@@ -289,7 +311,7 @@ function loadStage(stageData) {
   
   const targetImg = document.getElementById('ch-target-img');
   targetImg.src = stageData.targetImg;
-  document.getElementById('ch-char-tip').textContent = stageData.charTip;
+  document.getElementById('ch-char-tip').textContent = stageData.charTip || '사진을 자세히 관찰해 보세요! 어떤 형태와 색상, 재질이 돋보이나요?';
 
   updateHeartsUI();
 
@@ -390,12 +412,12 @@ function toggleHintView() {
   }
 }
 
-// 무관한 어휘/장난말/게임/전자기기 패턴 사전
+// 무관한 어휘/장난말/게임/전자기기 패턴 사전 (정상 한국어 오탐 방지를 위해 2글자 이상/구체적 키워드 위주 구성)
 const IRRELEVANT_PATTERNS = [
   // 장난말 및 비하
   '바보', '멍청', '똥개', '쓰레기', '죽어', '닥쳐', '미친', '새끼', '존나', '졸라',
   // 게임 / 만화 / 연예인
-  '롤', '피파', '마크', '마인크래프트', '포켓몬', '피카츄', '오버워치', '발로란트', '아이유', 'bts', '방탄', '축구', '야구', '농구', '게임',
+  '롤게임', '리그오브레전드', '피파', '마인크래프트', '포켓몬', '피카츄', '오버워치', '발로란트', '브롤스타즈', '아이유', 'bts', '방탄소년단', '축구', '야구', '농구', '게임',
   // IT 및 전자기기 (정물화/자연과 무관)
   '스마트폰', '핸드폰', '아이폰', '갤럭시', '컴퓨터', '노트북', '유튜브', '틱톡', '넷플릭스', '카톡',
   // 무의미한 자모/초성
@@ -632,12 +654,22 @@ function generateRobustAIImage(userPrompt, stageData, evalResult) {
       return;
     }
 
-    // 2단계 & 3단계: 준비된 실제 고화질 AI 작품 로드
+    // 2단계 & 3단계: 준비된 실제 고화질 AI 작품 로드 (네트워크 지연 시 3초 안전 타임아웃)
     const baseImgSrc = stageData.aiImg || stageData.targetImg;
     const img = new Image();
-    img.src = baseImgSrc;
+    let isDone = false;
+
+    const safetyTimer = setTimeout(() => {
+      if (!isDone) {
+        isDone = true;
+        resolve(baseImgSrc);
+      }
+    }, 3000);
 
     img.onload = () => {
+      if (isDone) return;
+      isDone = true;
+      clearTimeout(safetyTimer);
       ctx.clearRect(0, 0, 600, 600);
 
       if (score < 65) {
@@ -711,13 +743,22 @@ function generateRobustAIImage(userPrompt, stageData, evalResult) {
         ctx.fillText(`"${snippet}"`, 580, 576);
       }
 
-      resolve(canvas.toDataURL('image/jpeg', 0.95));
+      try {
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      } catch (e) {
+        resolve(baseImgSrc);
+      }
     };
 
     img.onerror = () => {
+      if (isDone) return;
+      isDone = true;
+      clearTimeout(safetyTimer);
       // 이미지 로드 예외 시 안전하게 원본으로 대응
       resolve(stageData.targetImg);
     };
+
+    img.src = baseImgSrc;
   });
 }
 
@@ -815,10 +856,12 @@ function init3DTiltCards() {
 // 8. 프롬프트 제출 처리
 // ====================================================
 function submitPrompt() {
+  if (state.isGenerating) return;
   const promptInput = document.getElementById('ch-prompt-input');
   const userText = promptInput.value.trim();
-  if (userText.length < 2) return;
+  if (userText.length < 10) return;
 
+  state.isGenerating = true;
   const currentStage = state.currentStageData;
   const overlay = document.getElementById('loading-overlay');
   const previewText = document.getElementById('loading-prompt-text');
@@ -836,12 +879,19 @@ function submitPrompt() {
     progressBar.style.width = `${progress}%`;
     if (progress >= 100) {
       clearInterval(timer);
-      generateRobustAIImage(userText, currentStage, evalResult).then((generatedImg) => {
-        setTimeout(() => {
+      generateRobustAIImage(userText, currentStage, evalResult)
+        .then((generatedImg) => {
+          setTimeout(() => {
+            overlay.classList.remove('active');
+            state.isGenerating = false;
+            finishEvaluation(userText, currentStage, evalResult, generatedImg);
+          }, 200);
+        })
+        .catch(() => {
           overlay.classList.remove('active');
-          finishEvaluation(userText, currentStage, evalResult, generatedImg);
-        }, 200);
-      });
+          state.isGenerating = false;
+          finishEvaluation(userText, currentStage, evalResult, currentStage.aiImg || currentStage.targetImg);
+        });
     }
   }, 100);
 }
@@ -854,6 +904,8 @@ function finishEvaluation(userPrompt, stageData, evalResult, userGenImg) {
     state.hearts = Math.max(0, state.hearts - 1);
   }
 
+  // localStorage 용량 초과 방지를 위해 저장용 객체는 경량 경로 사용
+  const storageThumb = evalResult.score < 35 ? stageData.targetImg : (stageData.aiImg || stageData.targetImg);
   const historyEntry = {
     id: Date.now(),
     date: new Date().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
@@ -864,11 +916,11 @@ function finishEvaluation(userPrompt, stageData, evalResult, userGenImg) {
     userPrompt: userPrompt,
     targetPrompt: stageData.targetPrompt,
     targetImg: stageData.targetImg,
-    userGenImg: userGenImg
+    userGenImg: storageThumb
   };
 
   saveHistory(historyEntry);
-  state.lastResult = historyEntry;
+  state.lastResult = { ...historyEntry, userGenImg: userGenImg };
 
   navigateTo('result');
 
@@ -895,13 +947,16 @@ function finishEvaluation(userPrompt, stageData, evalResult, userGenImg) {
   animateScore(0, evalResult.score, scoreNumEl, gaugeFillEl);
 
   // 스플릿 슬라이더 이미지 연결
-  document.getElementById('res-target-img').src = stageData.targetImg;
+  const resTargetImg = document.getElementById('res-target-img');
+  resTargetImg.onload = () => setSliderPosition(state.sliderPos || 50);
+  resTargetImg.src = stageData.targetImg;
   document.getElementById('res-user-img').src = userGenImg;
   document.getElementById('res-target-prompt').textContent = stageData.targetPrompt;
   document.getElementById('res-user-prompt').textContent = userPrompt;
 
-  // 슬라이더 50% 위치 초기화
+  // 슬라이더 50% 위치 초기화 (레이아웃 렌더링 직후 너비 재보정 포함)
   setSliderPosition(50);
+  requestAnimationFrame(() => setSliderPosition(50));
 
   // 피드백 리포트
   document.getElementById('fb-positive-text').textContent = evalResult.isPassed 
@@ -1062,7 +1117,19 @@ function saveHistory(entry) {
   if (state.userPromptHistory.length > 20) {
     state.userPromptHistory.pop();
   }
-  localStorage.setItem('promptmatch_history', JSON.stringify(state.userPromptHistory));
+  try {
+    localStorage.setItem('promptmatch_history', JSON.stringify(state.userPromptHistory));
+  } catch (e) {
+    // 저장 공간 초과 시 오래된 항목 정리 후 재시도 (절대 앱이 멈추지 않도록 방어)
+    try {
+      while (state.userPromptHistory.length > 5) {
+        state.userPromptHistory.pop();
+      }
+      localStorage.setItem('promptmatch_history', JSON.stringify(state.userPromptHistory));
+    } catch (innerErr) {
+      // 시크릿 모드나 스토리지 차단 환경에서도 메모리 상으로만 정상 유지
+    }
+  }
 }
 
 function renderHistoryView() {
@@ -1098,20 +1165,20 @@ function renderHistoryView() {
   container.innerHTML = history.map(item => `
     <div class="history-card">
       <div class="hist-top">
-        <span class="hist-date">${item.date} · Level ${item.level}</span>
-        <span class="hist-score ${item.isPassed ? 'pass' : ''}">${item.score}% 싱크로율</span>
+        <span class="hist-date">${escapeHtml(item.date)} · Level ${escapeHtml(item.level)}</span>
+        <span class="hist-score ${item.isPassed ? 'pass' : ''}">${escapeHtml(item.score)}% 싱크로율</span>
       </div>
       <div class="hist-images">
         <div class="hist-thumb" title="원본 이미지">
-          <img src="${item.targetImg}" alt="원본">
+          <img src="${escapeHtml(item.targetImg)}" alt="원본">
         </div>
         <div class="hist-thumb" title="내가 만든 AI 이미지">
-          <img src="${item.userGenImg}" alt="생성 AI 이미지">
+          <img src="${escapeHtml(item.userGenImg)}" alt="생성 AI 이미지">
         </div>
       </div>
-      <p class="hist-prompt" title="${item.userPrompt}">✍️ "${item.userPrompt}"</p>
+      <p class="hist-prompt" title="${escapeHtml(item.userPrompt)}">✍️ "${escapeHtml(item.userPrompt)}"</p>
       <div class="hist-actions">
-        <button class="btn btn-sm btn-outline" onclick="replayStage('${item.stageTitle}')">다시 도전</button>
+        <button class="btn btn-sm btn-outline" onclick="replayStage('${escapeHtml(item.stageTitle)}')">다시 도전</button>
       </div>
     </div>
   `).join('');
