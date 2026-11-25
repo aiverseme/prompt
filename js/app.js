@@ -676,33 +676,49 @@ function selectDynamicAIImage(userPrompt, stageData) {
     return stageData.aiImg || stageData.targetImg;
   }
 
-  const lower = userPrompt.toLowerCase();
+  const lower = userPrompt.trim().toLowerCase();
+
+  // 1. 프롬프트 문자열 해시 계산 (조금만 바뀌어도 다른 값이 나오도록 FNV-1a 변형)
+  let hash = 2166136261;
+  for (let i = 0; i < lower.length; i++) {
+    hash ^= lower.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  hash = Math.abs(hash);
+
+  // 2. 뚜렷한 화풍/특수 키워드만 강한 가중치 부여 (일반 사물 단어 쏠림 방지)
+  const styleBoostWords = ['수채화', '일러스트', '애니', '유화', '노을', '실루엣', '야외', '탑뷰', '랜턴', '유리'];
   let bestScore = -1;
-  let tiedVariants = [];
+  let candidates = [];
 
   variants.forEach(variant => {
-    let matchCount = 0;
+    let score = 0;
     variant.keywords.forEach(kw => {
       if (lower.includes(kw.toLowerCase())) {
-        matchCount += 1;
+        score += styleBoostWords.includes(kw.toLowerCase()) ? 3 : 0.5;
       }
     });
 
-    if (matchCount > bestScore) {
-      bestScore = matchCount;
-      tiedVariants = [variant];
-    } else if (matchCount === bestScore) {
-      tiedVariants.push(variant);
+    // 같은 문제에서 방금 전과 다른 문장을 입력했는데 직전 이미지와 같다면 감점(최소 2개 이상일 때 다른 그림 보장)
+    if (
+      state.lastSelectedVariantSrc === variant.src &&
+      state.lastPromptText !== lower &&
+      variants.length > 1
+    ) {
+      score -= 10;
+    }
+
+    if (score > bestScore + 0.6) {
+      bestScore = score;
+      candidates = [variant];
+    } else if (Math.abs(score - bestScore) <= 0.6) {
+      if (score > bestScore) bestScore = score;
+      candidates.push(variant);
     }
   });
 
-  // 동률(또는 키워드 0매칭)일 경우 프롬프트 문자열 해시로 결정론적 분산 선택
-  let hash = 0;
-  for (let i = 0; i < lower.length; i++) {
-    hash = ((hash << 5) - hash) + lower.charCodeAt(i);
-    hash |= 0;
-  }
-  const chosen = tiedVariants[Math.abs(hash) % tiedVariants.length];
+  state.lastPromptText = lower;
+  const chosen = candidates[hash % candidates.length];
   return chosen.src;
 }
 
